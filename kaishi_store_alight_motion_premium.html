@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaishi Store - Alight Motion Premium 1 Tahun</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        am: {
+                            green: '#00E676',
+                            bright: '#00FF87',
+                            dark: '#080B11',
+                            card: '#131A29',
+                            cardHover: '#1A2338',
+                            purple: '#A855F7',
+                            accent: '#6366F1'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 4s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'cart-move': 'cartMove 16s linear infinite',
+                        'cart-flip': 'cartFlip 16s linear infinite'
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 15px rgba(0, 230, 118, 0.3)' },
+                            '100%': { boxShadow: '0 0 30px rgba(0, 230, 118, 0.8)' },
+                        },
+                        /* Animasi pergerakan container tanpa membalikkan elemen di dalamnya */
+                        cartMove: {
+                            '0%': { transform: 'translateX(-120%)' },
+                            '48%': { transform: 'translateX(100vw)' },
+                            '50%': { transform: 'translateX(100vw)' },
+                            '98%': { transform: 'translateX(-120%)' },
+                            '100%': { transform: 'translateX(-120%)' }
+                        },
+                        /* Animasi khusus membalik ikon troli ketika berjalan mundur */
+                        cartFlip: {
+                            '0%, 48%': { transform: 'scaleX(1)' },
+                            '49%, 98%': { transform: 'scaleX(-1)' },
+                            '99%, 100%': { transform: 'scaleX(1)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #080B11;
+            color: #F3F4F6;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Canvas Uang Jatuh Overhead */
+        #moneyRainCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Custom Glassmorphism Styling */
+        .glass-card {
+            background: rgba(19, 26, 41, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-nav {
+            background: rgba(8, 11, 17, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .neon-border {
+            box-shadow: 0 0 20px rgba(0, 230, 118, 0.15);
+            border: 1px solid rgba(0, 230, 118, 0.3);
+        }
+
+        .neon-text-green {
+            text-shadow: 0 0 10px rgba(0, 230, 118, 0.5);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #00FF87 0%, #60EFFF 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .gradient-bg-btn {
+            background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%);
+        }
+
+        .gradient-bg-btn:hover {
+            background: linear-gradient(135deg, #00FF87 0%, #40C4FF 100%);
+            box-shadow: 0 0 25px rgba(0, 230, 118, 0.6);
+        }
+
+        /* Decorative Floating Shopping Cart Bar */
+        .running-cart-wrapper {
+            position: fixed;
+            bottom: 12px;
+            left: 0;
+            width: 100%;
+            pointer-events: none;
+            z-index: 40;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #080B11;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1A2338;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00E676;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-am-green selection:text-black">
+
+    <!-- Canvas Uang Jatuh -->
+    <canvas id="moneyRainCanvas"></canvas>
+
+    <!-- Running Shopping Cart Decoration at Bottom Screen -->
+    <div class="running-cart-wrapper overflow-hidden h-14 flex items-center">
+        <div class="animate-cart-move flex items-center gap-2 pointer-events-auto cursor-pointer bg-am-card/90 border border-am-green/40 backdrop-blur-md px-4 py-2 rounded-full shadow-2xl hover:scale-105 transition-transform" onclick="orderViaWA()">
+            <!-- Hanya ikon troli yang berbalik arah sesuai arah lari -->
+            <div class="animate-cart-flip relative flex items-center justify-center">
+                <i class="fa-solid fa-cart-shopping text-am-green text-xl animate-bounce"></i>
+                <span class="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center">1</span>
+            </div>
+            <!-- Teks selalu tegak lurus dan terbaca sempurna -->
+            <div class="flex flex-col text-left pr-1">
+                <span class="text-[11px] font-extrabold text-white leading-tight">PROMO ALIGHT MOTION RP 10.000 / 1 TAHUN! 🔥</span>
+                <span class="text-[9px] text-am-green font-semibold leading-tight">Stok Terbatas - Klik Untuk Pesan</span>
+            </div>
+            <div class="bg-am-green text-black px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase shrink-0">
+                Beli
+            </div>
+        </div>
+    </div>
+
+    <nav class="fixed top-0 left-0 w-full z-50 glass-nav transition-all duration-300">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <!-- Logo -->
+            <a href="#" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-xl gradient-bg-btn p-0.5 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-300">
+                    <div class="w-full h-full bg-am-dark rounded-[10px] flex items-center justify-center">
+                        <span class="font-black text-xl text-am-green gradient-text group-hover:scale-110 transition-transform tracking-tighter">K</span>
+                    </div>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-extrabold text-xl tracking-tight text-white flex items-center gap-1.5">
+                        KAISHI<span class="text-am-green">STORE</span>
+                        <i class="fa-solid fa-circle-check text-xs text-am-green" title="Verified Seller"></i>
+                    </span>
+                    <span class="text-[10px] text-gray-400 tracking-wider uppercase font-semibold">Alight Motion Provider</span>
+                </div>
+            </a>
+
+            <!-- Nav Links -->
+            <div class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-300">
+                <a href="#fitur" class="hover:text-am-green transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-star text-xs text-am-green"></i> Fitur
+                </a>
+                <a href="#harga" class="hover:text-am-green transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-tag text-xs text-am-green"></i> Harga
+                </a>
+                <a href="#cara-order" class="hover:text-am-green transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-circle-question text-xs text-am-green"></i> Cara Order
+                </a>
+                <a href="#ulasan" class="hover:text-am-green transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-comments text-xs text-am-green"></i> Ulasan
+                </a>
+            </div>
+
+            <!-- CTA Top Button -->
+            <button onclick="orderViaWA()" class="gradient-bg-btn text-black font-bold px-5 py-2.5 rounded-full text-sm hover:scale-105 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-am-green/20">
+                <i class="fa-brands fa-whatsapp text-lg"></i>
+                <span>Order Now</span>
+            </button>
+        </div>
+    </nav>
+
+    <section class="pt-32 pb-16 md:pt-40 md:pb-24 px-4 relative overflow-hidden">
+        <!-- Background Lighting Effects -->
+        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-am-green/10 rounded-full blur-[120px] pointer-events-none"></div>
+        <div class="absolute top-1/3 right-10 w-[300px] h-[300px] bg-am-purple/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+        <div class="max-w-5xl mx-auto text-center relative z-20">
+            <!-- Badge Promo -->
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card border border-am-green/30 text-am-green text-xs font-semibold mb-6 animate-pulse-slow shadow-lg">
+                <span class="flex h-2 w-2 rounded-full bg-am-green animate-ping"></span>
+                <i class="fa-solid fa-fire text-amber-400"></i> PROMO SPESIAL HARI INI - STOK TERBATAS
+            </div>
+
+            <!-- Main Heading -->
+            <h1 class="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+                Edit Video Tanpa Batas dengan <br class="hidden sm:block"/>
+                <span class="gradient-text neon-text-green">Alight Motion Premium</span>
+            </h1>
+
+            <p class="text-base sm:text-lg md:text-xl text-gray-300 max-w-2xl mx-auto mb-10 leading-relaxed">
+                Nikmati akses penuh ke semua fitur pro, ribuan efek premium, tanpa watermark, dan ekspor kualitas HD selama <span class="text-am-green font-semibold">1 Tahun Penuh!</span>
+            </p>
+
+            <!-- Pricing Banner Hero -->
+            <div class="glass-card max-w-md mx-auto p-6 rounded-3xl neon-border mb-10 transform hover:scale-[1.02] transition-transform duration-300">
+                <div class="text-xs uppercase tracking-widest text-gray-400 font-bold mb-1">Paket Sultan Harga Merakyat</div>
+                <div class="flex items-center justify-center gap-3 my-2">
+                    <span class="text-gray-400 line-through text-lg font-medium">Rp 120.000</span>
+                    <span class="text-4xl sm:text-5xl font-black text-white tracking-tight">Rp 10.000</span>
+                    <span class="text-xs font-bold text-am-green bg-am-green/10 px-2.5 py-1 rounded-md border border-am-green/30">/ 1 TAHUN</span>
+                </div>
+                <p class="text-xs text-gray-400 mt-2"><i class="fa-solid fa-shield-halved text-am-green"></i> Garansi Penuh 1 Tahun + Fast Process</p>
+
+                <!-- Order Button CTA Main -->
+                <button onclick="orderViaWA()" class="w-full mt-6 gradient-bg-btn text-black font-extrabold text-lg py-4 px-6 rounded-2xl flex items-center justify-center gap-3 shadow-xl hover:shadow-am-green/40 transition-all duration-300 transform active:scale-95 group">
+                    <i class="fa-brands fa-whatsapp text-2xl group-hover:scale-110 transition-transform"></i>
+                    <span>PESAN PREMIUM SEKARANG</span>
+                    <i class="fa-solid fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
+                </button>
+            </div>
+
+            <!-- Key Highlights Small Badge -->
+            <div class="flex flex-wrap justify-center items-center gap-6 text-xs sm:text-sm text-gray-400 font-medium">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-am-green"></i> No Watermark
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-am-green"></i> Support Preset XML/Link
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-am-green"></i> All Effects Unlocked
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-am-green"></i> Garansi Anti-Back
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="fitur" class="py-20 px-4 relative z-20">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-xs font-bold text-am-green uppercase tracking-widest mb-2">Keunggulan Produk</h2>
+                <h3 class="text-3xl sm:text-4xl font-extrabold text-white">Mengapa Harus Order di Kaishi Store?</h3>
+                <p class="text-gray-400 mt-3 text-sm sm:text-base max-w-xl mx-auto">Pengalaman mengedit video jedag-jedug, AMV, dan konten estetik jadi lebih lancar tanpa hambatan fitur terkunci.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Feature Card 1 -->
+                <div class="glass-card p-6 rounded-2xl hover:border-am-green/40 hover:bg-am-cardHover transition-all duration-300 group">
+                    <div class="w-12 h-12 rounded-xl bg-am-green/10 border border-am-green/30 flex items-center justify-center text-am-green text-xl mb-4 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-eye-slash"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-2">Tanpa Watermark</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">Hasil ekspor video kamu bersih profesional tanpa logo Alight Motion yang mengganggu visual.</p>
+                </div>
+
+                <!-- Feature Card 2 -->
+                <div class="glass-card p-6 rounded-2xl hover:border-am-green/40 hover:bg-am-cardHover transition-all duration-300 group">
+                    <div class="w-12 h-12 rounded-xl bg-am-purple/10 border border-am-purple/30 flex items-center justify-center text-am-purple text-xl mb-4 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-2">Semua Efek Terbuka</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">Akses seluruh efek premium, filter, transisi, dan font eksklusif tanpa batasan apapun.</p>
+                </div>
+
+                <!-- Feature Card 3 -->
+                <div class="glass-card p-6 rounded-2xl hover:border-am-green/40 hover:bg-am-cardHover transition-all duration-300 group">
+                    <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 text-xl mb-4 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-link"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-2">Support Import Preset</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">Bebas import preset 5MB+ maupun XML link tanpa error, sangat fleksibel untuk kreator.</p>
+                </div>
+
+                <!-- Feature Card 4 -->
+                <div class="glass-card p-6 rounded-2xl hover:border-am-green/40 hover:bg-am-cardHover transition-all duration-300 group">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl mb-4 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-shield-heart"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-2">Garansi Full 1 Tahun</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">Kami memberikan jaminan garansi penuh jika ada kendala selama masa aktif 1 tahun.</p>
+                </div>
+
+                <!-- Feature Card 5 -->
+                <div class="glass-card p-6 rounded-2xl hover:border-am-green/40 hover:bg-am-cardHover transition-all duration-300 group">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl mb-4 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-2">Proses Kilat 1-5 Menit</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">Setelah pembayaran terkonfirmasi, akun langsung siap digunakan tanpa menunggu lama.</p>
+                </div>
+
+                <!-- Feature Card 6 -->
+                <div class="glass-card p-6 rounded-2xl hover:border-am-green/40 hover:bg-am-cardHover transition-all duration-300 group">
+                    <div class="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-xl mb-4 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-headset"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-2">Admin Ramah & Fast Respon</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">Siap membantu jika kamu mengalami kendala dalam pemasangan atau penggunaan aplikasi.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="harga" class="py-16 px-4 relative z-20">
+        <div class="max-w-3xl mx-auto">
+            <div class="glass-card rounded-3xl p-8 sm:p-12 relative overflow-hidden neon-border">
+                <div class="absolute top-0 right-0 bg-am-green text-black font-extrabold text-xs px-4 py-1.5 rounded-bl-xl tracking-wider">BEST VALUE</div>
+                
+                <div class="text-center">
+                    <h3 class="text-2xl sm:text-3xl font-extrabold text-white">Paket Alight Motion Premium</h3>
+                    <p class="text-gray-400 text-sm mt-2">Satu-satunya penawaran terbaik untuk kebutuhan editing kamu</p>
+
+                    <div class="my-8 py-6 border-y border-gray-800">
+                        <span class="text-sm text-gray-400 font-semibold block mb-1">HARGA PROMO NETT</span>
+                        <div class="flex items-center justify-center gap-2">
+                            <span class="text-2xl font-bold text-gray-500">Rp</span>
+                            <span class="text-5xl sm:text-6xl font-black text-white">10.000</span>
+                        </div>
+                        <span class="inline-block mt-2 text-xs font-bold text-am-green bg-am-green/10 border border-am-green/30 px-3 py-1 rounded-full">
+                            Masa Aktif 1 Tahun (365 Hari)
+                        </span>
+                    </div>
+
+                    <!-- Checklist -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left max-w-lg mx-auto mb-8 text-sm text-gray-300">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-circle-check text-am-green"></i> Access All Premium Features
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-circle-check text-am-green"></i> Support Android & iOS
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-circle-check text-am-green"></i> Export Full HD / 4K
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-circle-check text-am-green"></i> Preset Links Enabled
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-circle-check text-am-green"></i> Full Garansi 1 Tahun
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-circle-check text-am-green"></i> Bebas Update Versi Terbaru
+                        </div>
+                    </div>
+
+                    <!-- CTA Order Button -->
+                    <button onclick="orderViaWA()" class="w-full gradient-bg-btn text-black font-extrabold text-lg py-4 px-8 rounded-2xl shadow-lg hover:shadow-am-green/50 transition-all duration-300 transform active:scale-95 flex items-center justify-center gap-3">
+                        <i class="fa-brands fa-whatsapp text-2xl"></i>
+                        <span>PESAN PREMIUM (Rp 10.000)</span>
+                    </button>
+                    <p class="text-xs text-gray-500 mt-4"><i class="fa-solid fa-lock text-gray-400"></i> Transaksi Aman Direct ke WhatsApp Admin Kaishi</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="cara-order" class="py-16 px-4 relative z-20">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-xs font-bold text-am-green uppercase tracking-widest mb-2">Panduan Mudah</h2>
+                <h3 class="text-3xl font-extrabold text-white">Cara Pemesanan Cepat</h3>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 relative">
+                <!-- Step 1 -->
+                <div class="glass-card p-6 rounded-2xl text-center relative">
+                    <div class="w-10 h-10 rounded-full bg-am-green text-black font-bold flex items-center justify-center mx-auto mb-4 text-lg">1</div>
+                    <h4 class="font-bold text-white mb-2">Klik Tombol Order</h4>
+                    <p class="text-xs text-gray-400 leading-relaxed">Klik tombol "Pesan Premium" di website ini untuk terhubung otomatis ke WhatsApp.</p>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="glass-card p-6 rounded-2xl text-center relative">
+                    <div class="w-10 h-10 rounded-full bg-am-green text-black font-bold flex items-center justify-center mx-auto mb-4 text-lg">2</div>
+                    <h4 class="font-bold text-white mb-2">Kirim Pesan & Pembayaran</h4>
+                    <p class="text-xs text-gray-400 leading-relaxed">Kirim format pesan yang sudah tersedia dan lakukan pembayaran sebesar Rp 10.000 (DANA, QRIS, GoPay, OVO, dll).</p>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="glass-card p-6 rounded-2xl text-center relative">
+                    <div class="w-10 h-10 rounded-full bg-am-green text-black font-bold flex items-center justify-center mx-auto mb-4 text-lg">3</div>
+                    <h4 class="font-bold text-white mb-2">Akun Aktif & Siap Pakai</h4>
+                    <p class="text-xs text-gray-400 leading-relaxed">Admin Kaishi akan memproses pesananmu dalam hitungan menit. Selamat berkarya!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="ulasan" class="py-20 px-4 bg-black/30 border-t border-gray-800/50 relative z-20">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-xs font-bold text-am-green uppercase tracking-widest mb-2">Testimoni Pembeli</h2>
+                <h3 class="text-3xl font-extrabold text-white">Ulasan & Komentar Pelanggan</h3>
+                <p class="text-gray-400 text-sm mt-2">Kepuasan pembeli adalah prioritas utama Kaishi Store</p>
+            </div>
+
+            <!-- Comment Form Block -->
+            <div class="glass-card p-6 sm:p-8 rounded-3xl mb-12 border border-gray-800">
+                <h4 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-am-green"></i> Tulis Komentar / Ulasan Kamu
+                </h4>
+                <form id="commentForm" onsubmit="addComment(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Nama Kamu *</label>
+                            <input type="text" id="reviewerName" required placeholder="Contoh: Rian Editor" class="w-full bg-am-dark border border-gray-700 focus:border-am-green rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-am-green transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Rating Bintang *</label>
+                            <select id="reviewerRating" class="w-full bg-am-dark border border-gray-700 focus:border-am-green rounded-xl px-4 py-3 text-sm text-amber-400 focus:outline-none focus:ring-1 focus:ring-am-green transition-all">
+                                <option value="5">⭐⭐⭐⭐⭐ (5/5 - Sangat Puas)</option>
+                                <option value="4">⭐⭐⭐⭐ (4/5 - Bagus)</option>
+                                <option value="3">⭐⭐⭐ (3/3 - Cukup)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Isi Ulasan / Komentar *</label>
+                        <textarea id="reviewerText" rows="3" required placeholder="Tuliskan pengalaman kamu membeli Alight Motion Premium di sini..." class="w-full bg-am-dark border border-gray-700 focus:border-am-green rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-am-green transition-all"></textarea>
+                    </div>
+                    <button type="submit" class="gradient-bg-btn text-black font-bold px-6 py-3 rounded-xl text-sm hover:opacity-90 transition-opacity flex items-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> Kirim Ulasan
+                    </button>
+                </form>
+            </div>
+
+            <!-- List of Comments -->
+            <div id="commentsList" class="space-y-4">
+                <!-- Dynamic & Default Comments will load here -->
+            </div>
+        </div>
+    </section>
+
+    <footer class="border-t border-gray-800/80 py-10 px-4 glass-nav mt-10 relative z-20">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg gradient-bg-btn p-0.5 flex items-center justify-center">
+                    <div class="w-full h-full bg-am-dark rounded-[6px] flex items-center justify-center">
+                        <span class="font-black text-sm text-am-green gradient-text">K</span>
+                    </div>
+                </div>
+                <span class="font-extrabold text-white text-lg">KAISHI<span class="text-am-green">STORE</span></span>
+            </div>
+
+            <p class="text-xs text-gray-500 text-center">
+                &copy; <span id="currentYear"></span> Kaishi Store. All Rights Reserved. Layanan Alight Motion Premium Termurah & Terpercaya.
+            </p>
+
+            <div class="flex items-center gap-4 text-gray-400 text-sm">
+                <button onclick="orderViaWA()" class="hover:text-am-green transition-colors flex items-center gap-1.5 text-xs font-semibold">
+                    <i class="fa-brands fa-whatsapp text-am-green text-base"></i> Hubungi Admin
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Set dynamic year in footer
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // Target WhatsApp Number
+        const WA_NUMBER = "6283853707720";
+
+        // Esthetic Long Text Message for Order
+        const WA_MESSAGE = `✨ *HALO ADMIN KAISHI* ✨
+____________________________________
+
+Saya mau order *Alight Motion Premium 1 Tahun* seharga *Rp 10.000*.
+
+*Detail Pesanan:*
+• Produk: Alight Motion Premium 1 Tahun
+• Harga: Rp 10.000
+• Garansi: 1 Tahun Full
+
+Mohon petunjuk metode pembayaran & proses transaksinya ya Admin Kaishi. Terima kasih banyak! 🚀🔥`;
+
+        // Redirect to WhatsApp function
+        function orderViaWA() {
+            const encodedText = encodeURIComponent(WA_MESSAGE);
+            const waUrl = `https://wa.me/${WA_NUMBER}?text=${encodedText}`;
+            window.open(waUrl, '_blank');
+        }
+
+        // ==========================================
+        // MONEY RAIN ANIMATION (CANVAS OVERLAY)
+        // ==========================================
+        const canvas = document.getElementById('moneyRainCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const moneyItems = ['💵', '💸', '💰', '💲', '🪙', '✨'];
+        const numParticles = 35;
+        const particles = [];
+
+        class MoneyParticle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * -canvas.height;
+                this.size = Math.random() * 18 + 14;
+                this.speedY = Math.random() * 1.5 + 1;
+                this.speedX = Math.sin(Math.random() * Math.PI) * 0.8;
+                this.symbol = moneyItems[Math.floor(Math.random() * moneyItems.length)];
+                this.rotation = Math.random() * 360;
+                this.rotSpeed = (Math.random() - 0.5) * 2;
+                this.opacity = Math.random() * 0.5 + 0.3;
+            }
+
+            update() {
+                this.y += this.speedY;
+                this.x += Math.sin(this.y * 0.01) * 0.5;
+                this.rotation += this.rotSpeed;
+
+                if (this.y > canvas.height + 20) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate((this.rotation * Math.PI) / 180);
+                ctx.globalAlpha = this.opacity;
+                ctx.font = `${this.size}px sans-serif`;
+                ctx.fillText(this.symbol, 0, 0);
+                ctx.restore();
+            }
+        }
+
+        for (let i = 0; i < numParticles; i++) {
+            particles.push(new MoneyParticle());
+        }
+
+        function animateMoneyRain() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animateMoneyRain);
+        }
+
+        // ==========================================
+        // REVIEWS & COMMENTS LOGIC
+        // ==========================================
+        const defaultReviews = [
+            {
+                name: "Dimas Editor AM",
+                rating: 5,
+                date: "Hari ini",
+                text: "Gokil banget sih ini! Cuma 10rb udah dapet 1 tahun full. Bebas watermark dan pas dikirim preset XML langsung smooth tanpa kendala. Admin Kaishi juga responsif bgt!"
+            },
+            {
+                name: "Siti Rahma",
+                rating: 5,
+                date: "Kemarin",
+                text: "Awalnya sempat ragu kok murah banget 10rb dapet setahun. Pas dicoba prosesnya cepet bgt ga sampe 3 menit akun udah aktif. Mantap Kaishi Store!"
+            },
+            {
+                name: "Fajri_Presets",
+                rating: 5,
+                date: "3 hari yang lalu",
+                text: "Recommended seller banget. Buat yang nyari AM Premium aman dan bergaransi wajib beli di sini. Sukses terus kak Admin Kaishi!"
+            }
+        ];
+
+        function loadComments() {
+            const stored = localStorage.getItem('kaishi_am_comments');
+            let comments = defaultReviews;
+
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        comments = parsed;
+                    }
+                } catch (e) {
+                    console.error("Error parsing stored comments", e);
+                }
+            }
+
+            renderComments(comments);
+        }
+
+        function renderComments(comments) {
+            const container = document.getElementById('commentsList');
+            container.innerHTML = '';
+
+            comments.forEach(comment => {
+                const stars = '★'.repeat(comment.rating) + '☆'.repeat(5 - comment.rating);
+                const card = document.createElement('div');
+                card.className = 'glass-card p-5 rounded-2xl border border-gray-800/80 transition-all hover:border-gray-700';
+                
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-am-green to-am-purple text-black font-extrabold text-sm flex items-center justify-center">
+                                ${comment.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <h5 class="text-sm font-bold text-white flex items-center gap-1.5">
+                                    ${escapeHtml(comment.name)}
+                                    <i class="fa-solid fa-circle-check text-am-green text-[10px]" title="Pembeli Terverifikasi"></i>
+                                </h5>
+                                <div class="text-amber-400 text-xs tracking-wider">${stars}</div>
+                            </div>
+                        </div>
+                        <span class="text-[11px] text-gray-500 font-medium">${escapeHtml(comment.date)}</span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-gray-300 leading-relaxed pl-12">
+                        ${escapeHtml(comment.text)}
+                    </p>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function addComment(event) {
+            event.preventDefault();
+
+            const nameInput = document.getElementById('reviewerName');
+            const ratingInput = document.getElementById('reviewerRating');
+            const textInput = document.getElementById('reviewerText');
+
+            const newComment = {
+                name: nameInput.value.trim(),
+                rating: parseInt(ratingInput.value),
+                date: "Baru saja",
+                text: textInput.value.trim()
+            };
+
+            const stored = localStorage.getItem('kaishi_am_comments');
+            let comments = stored ? JSON.parse(stored) : [...defaultReviews];
+
+            comments.unshift(newComment);
+            localStorage.setItem('kaishi_am_comments', JSON.stringify(comments));
+            renderComments(comments);
+
+            nameInput.value = '';
+            textInput.value = '';
+
+            showToast("Ulasan kamu berhasil dikirim! Terima kasih ✨");
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-20 right-6 z-50 glass-card bg-am-card border border-am-green text-white px-5 py-3 rounded-2xl shadow-2xl text-sm flex items-center gap-3 animate-bounce';
+            toast.innerHTML = `<i class="fa-solid fa-circle-check text-am-green text-lg"></i> <span>${message}</span>`;
+            
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3500);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+
+        // START ON LOAD
+        window.onload = function() {
+            loadComments();
+            animateMoneyRain();
+        };
+    </script>
+</body>
+</html>
